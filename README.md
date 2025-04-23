@@ -36,6 +36,20 @@ Project Manager Dashboard is designed to be the single pane of glass for all you
 
 • **Cross-Platform & Mobile-Ready**: The responsive design adapts to any screen size, so you can manage containers from your desktop, tablet, or phone without losing functionality.
 
+## Screenshots
+
+### Landing Page
+![Landing Page](img/index.png)
+
+### Admin Panel
+![Admin Panel](img/admin.png)
+
+### Container Details Modal
+![Container Details Modal](img/info.png)
+
+### Logs Modal
+![Logs Modal](img/logs.png)
+
 ## Requirements
 
 - Python 3.9 or higher
