@@ -9,36 +9,48 @@
         
         <div class="overflow-x-auto">
             <table class="min-w-full bg-white">
+                <colgroup>
+                    <col span="1" style="width: 20%">
+                    <col span="1" style="width: 15%">
+                    <col span="1" style="width: 35%">
+                    <col span="1" style="width: 20%">
+                </colgroup>
                 <thead class="bg-gray-100">
                     <tr>
-                        <th class="py-2 px-4 border-b">Name</th>
-                        <th class="py-2 px-4 border-b">Status</th>
-                        <th class="py-2 px-4 border-b">Image</th>
-                        <th class="py-2 px-4 border-b">Actions</th>
+                        <th class="py-2 px-4 border-b text-center">Name</th>
+                        <th class="py-2 px-4 border-b text-center">Status</th>
+                        <th class="py-2 px-4 border-b text-center">Image</th>
+                        <th class="py-2 px-4 border-b text-center">Actions</th>
                     </tr>
                 </thead>
                 <tbody>
                     {% for container in containers %}
                     <tr class="hover:bg-gray-50" data-container-id="{{ container.id }}">
-                        <td class="py-2 px-4 border-b">
+                        <td class="py-2 px-4 border-b text-center">
                             {% if container.host_port %}
-                                <a href="http://localhost:{{ container.host_port }}" target="_blank" class="text-blue-600 hover:underline flex items-center gap-1">
+                                <a href="http://localhost:{{ container.host_port }}" target="_blank" class="text-blue-600 hover:underline flex items-center gap-1 justify-center">
                                     <i class="fas fa-external-link-alt"></i> {{ container.name }}
                                 </a>
                             {% else %}
                                 {{ container.name }}
                             {% endif %}
                         </td>
-                        <td class="py-2 px-4 border-b">
+                        <td class="py-2 px-4 border-b text-center">
                             <span class="px-2 py-1 rounded-full text-xs font-medium 
                                 {% if container.status == 'running' %}bg-green-100 text-green-800
                                 {% else %}bg-red-100 text-red-800{% endif %}">
                                 {{ container.status }}
                             </span>
                         </td>
-                        <td class="py-2 px-4 border-b">{{ container.image }}</td>
-                        <td class="py-2 px-4 border-b">
-                            <div class="flex space-x-2 container-actions">
+                        <td class="py-2 px-4 border-b max-w-xs truncate text-center" title="{{ container.image }}">
+                            {% if container.image|length > 25 %}
+                                {{ container.image[:25] }}&hellip;
+                            {% else %}
+                                {{ container.image }}
+                            {% endif %}
+                        </td>
+                        <td class="py-2 px-4 border-b text-center">
+                            <div class="flex space-x-2 container-actions justify-center">
                                 {% if container.status == 'running' %}
                                 <a href="#" class="text-red-500 hover:text-red-700">
                                     <i class="fas fa-stop"></i>
