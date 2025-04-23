@@ -7,50 +7,50 @@
     <div class="bg-white rounded-lg shadow-lg p-6 mb-8">
         <h2 class="text-xl font-semibold mb-4">Project Containers</h2>
         
-        <div class="overflow-x-auto">
-            <table class="min-w-full bg-white">
+        <div class="overflow-x-auto w-full">
+            <table class="min-w-full bg-white text-sm md:text-base">
                 <colgroup>
-                    <col span="1" style="width: 20%">
-                    <col span="1" style="width: 15%">
-                    <col span="1" style="width: 35%">
-                    <col span="1" style="width: 20%">
+                    <col span="1" class="w-2/12">
+                    <col span="1" class="w-2/12">
+                    <col span="1" class="hidden md:table-column w-5/12">
+                    <col span="1" class="w-3/12">
                 </colgroup>
                 <thead class="bg-gray-100">
                     <tr>
-                        <th class="py-2 px-4 border-b text-center">Name</th>
-                        <th class="py-2 px-4 border-b text-center">Status</th>
-                        <th class="py-2 px-4 border-b text-center">Image</th>
-                        <th class="py-2 px-4 border-b text-center">Actions</th>
+                        <th class="py-2 px-2 md:px-4 border-b text-center whitespace-nowrap">Name</th>
+                        <th class="py-2 px-2 md:px-4 border-b text-center whitespace-nowrap">Status</th>
+                        <th class="py-2 px-2 md:px-4 border-b text-center whitespace-nowrap hidden md:table-cell">Image</th>
+                        <th class="py-2 px-2 md:px-4 border-b text-center whitespace-nowrap">Actions</th>
                     </tr>
                 </thead>
                 <tbody>
                     {% for container in containers %}
-                    <tr class="hover:bg-gray-50" data-container-id="{{ container.id }}">
-                        <td class="py-2 px-4 border-b text-center">
+                    <tr class="hover:bg-gray-50">
+                        <td class="py-2 px-2 md:px-4 border-b text-center align-middle">
                             {% if container.host_port %}
                                 <a href="http://localhost:{{ container.host_port }}" target="_blank" class="text-blue-600 hover:underline flex items-center gap-1 justify-center">
-                                    <i class="fas fa-external-link-alt"></i> {{ container.name }}
+                                    <i class="fas fa-external-link-alt"></i> <span class="truncate max-w-[100px] md:max-w-[200px] inline-block">{{ container.name }}</span>
                                 </a>
                             {% else %}
-                                {{ container.name }}
+                                <span class="truncate max-w-[100px] md:max-w-[200px] inline-block">{{ container.name }}</span>
                             {% endif %}
                         </td>
-                        <td class="py-2 px-4 border-b text-center">
+                        <td class="py-2 px-2 md:px-4 border-b text-center align-middle">
                             <span class="px-2 py-1 rounded-full text-xs font-medium 
                                 {% if container.status == 'running' %}bg-green-100 text-green-800
                                 {% else %}bg-red-100 text-red-800{% endif %}">
                                 {{ container.status }}
                             </span>
                         </td>
-                        <td class="py-2 px-4 border-b max-w-xs truncate text-center" title="{{ container.image }}">
+                        <td class="py-2 px-2 md:px-4 border-b max-w-xs truncate text-center align-middle hidden md:table-cell" title="{{ container.image }}">
                             {% if container.image|length > 25 %}
                                 {{ container.image[:25] }}&hellip;
                             {% else %}
                                 {{ container.image }}
                             {% endif %}
                         </td>
-                        <td class="py-2 px-4 border-b text-center">
-                            <div class="flex space-x-2 container-actions justify-center">
+                        <td class="py-2 px-2 md:px-4 border-b text-center align-middle">
+                            <div class="flex flex-wrap md:flex-nowrap space-x-2 container-actions justify-center items-center">
                                 {% if container.status == 'running' %}
                                 <a href="#" class="text-red-500 hover:text-red-700">
                                     <i class="fas fa-stop"></i>
