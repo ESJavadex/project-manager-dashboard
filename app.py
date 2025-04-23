@@ -53,12 +53,19 @@ def admin():
                     host_port = mappings[0].get('HostPort')
                     break
 
+        # Build URL on same host instead of localhost
+        container_url = None
+        if host_port:
+            base = request.host_url.rstrip('/').rsplit(':', 1)[0]
+            container_url = f"{base}:{host_port}"
+
         container_info.append({
             'id': container.id,
             'name': container.name,
             'status': container.status,
             'image': image_name,
-            'host_port': host_port
+            'host_port': host_port,
+            'url': container_url
         })
     return render_template('admin.html', containers=container_info)
 

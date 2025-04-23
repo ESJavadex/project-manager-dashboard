@@ -28,7 +28,7 @@
                     <tr class="hover:bg-gray-50">
                         <td class="py-2 px-2 md:px-4 border-b text-center align-middle">
                             {% if container.host_port %}
-                                <a href="http://localhost:{{ container.host_port }}" target="_blank" class="text-blue-600 hover:underline flex items-center gap-1 justify-center">
+                                <a href="{{ container.url }}" target="_blank" class="text-blue-600 hover:underline flex items-center gap-1 justify-center">
                                     <i class="fas fa-external-link-alt"></i> <span class="truncate max-w-[100px] md:max-w-[200px] inline-block">{{ container.name }}</span>
                                 </a>
                             {% else %}
