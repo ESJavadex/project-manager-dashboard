@@ -1,6 +1,8 @@
-from flask import Flask, render_template, request, jsonify
+from flask import Flask, render_template, request, jsonify, redirect, url_for, flash
 from flask_sqlalchemy import SQLAlchemy
-from flask_login import LoginManager, UserMixin
+from flask_login import LoginManager, UserMixin, login_user, logout_user, login_required, current_user
+from functools import wraps
+from datetime import datetime
 import docker
 import os
 from dotenv import load_dotenv
@@ -28,6 +30,26 @@ class User(UserMixin, db.Model):
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(20), unique=True, nullable=False)
     password = db.Column(db.String(60), nullable=False)
+    role = db.Column(db.String(20), nullable=False, default='read-only')
+
+class AuditLog(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    action = db.Column(db.String(100), nullable=False)
+    container_id = db.Column(db.String(64), nullable=True)
+    timestamp = db.Column(db.DateTime, default=datetime.utcnow)
+
+    user = db.relationship('User', backref='audit_logs')
+
+def roles_required(*roles):
+    def decorator(f):
+        @wraps(f)
+        def wrapped_function(*args, **kwargs):
+            if not current_user.is_authenticated or current_user.role not in roles:
+                return jsonify(success=False, error='Forbidden'), 403
+            return f(*args, **kwargs)
+        return wrapped_function
+    return decorator
 
 # Routes
 @app.route('/')
@@ -35,6 +57,8 @@ def home():
     return render_template('index.html')
 
 @app.route('/admin')
+@login_required
+@roles_required('read-only','operator','admin')
 def admin():
     containers = docker_client.containers.list(all=True)
     container_info = []
@@ -71,6 +95,8 @@ def admin():
 
 # Container Info Route
 @app.route('/container/<container_id>/info', methods=['GET'])
+@login_required
+@roles_required('read-only','operator','admin')
 def container_info(container_id):
     try:
         container = docker_client.containers.get(container_id)
@@ -94,11 +120,57 @@ def container_info(container_id):
 
 # Container Logs Route
 @app.route('/container/<container_id>/logs', methods=['GET'])
+@login_required
+@roles_required('read-only','operator','admin')
 def container_logs(container_id):
     try:
         container = docker_client.containers.get(container_id)
         logs = container.logs(tail=100, timestamps=True).decode('utf-8')
         return jsonify(success=True, logs=logs)
+    except Exception as e:
+        return jsonify(success=False, error=str(e)), 400
+
+# Container Stats Route
+@app.route('/container/<container_id>/stats', methods=['GET'])
+@login_required
+@roles_required('read-only','operator','admin')
+def container_stats(container_id):
+    try:
+        container = docker_client.containers.get(container_id)
+        stats = container.stats(stream=False)
+        
+        # Calculate CPU percentage
+        cpu_delta = stats['cpu_stats']['cpu_usage']['total_usage'] - \
+                   stats['precpu_stats']['cpu_usage']['total_usage']
+        system_delta = stats['cpu_stats']['system_cpu_usage'] - \
+                      stats['precpu_stats']['system_cpu_usage']
+        cpu_percent = 0.0
+        if system_delta > 0 and cpu_delta > 0:
+            cpu_percent = (cpu_delta / system_delta) * len(stats['cpu_stats']['cpu_usage'].get('percpu_usage', [1])) * 100.0
+        
+        # Calculate memory usage
+        mem_usage = stats['memory_stats'].get('usage', 0)
+        mem_limit = stats['memory_stats'].get('limit', 1)
+        mem_percent = (mem_usage / mem_limit) * 100.0 if mem_limit > 0 else 0
+        
+        # Network stats
+        rx_bytes = 0
+        tx_bytes = 0
+        if 'networks' in stats:
+            for interface, data in stats['networks'].items():
+                rx_bytes += data.get('rx_bytes', 0)
+                tx_bytes += data.get('tx_bytes', 0)
+        
+        result = {
+            'cpu_percent': round(cpu_percent, 2),
+            'mem_usage': mem_usage,
+            'mem_limit': mem_limit,
+            'mem_percent': round(mem_percent, 2),
+            'rx_bytes': rx_bytes,
+            'tx_bytes': tx_bytes
+        }
+        
+        return jsonify(success=True, stats=result)
     except Exception as e:
         return jsonify(success=False, error=str(e)), 400
 
@@ -152,75 +224,106 @@ def global_stats():
     except Exception as e:
         return jsonify(success=False, error=str(e)), 400
 
-# Container Stats Route
-@app.route('/container/<container_id>/stats', methods=['GET'])
-def container_stats(container_id):
-    try:
-        container = docker_client.containers.get(container_id)
-        stats = container.stats(stream=False)
-        
-        # Calculate CPU percentage
-        cpu_delta = stats['cpu_stats']['cpu_usage']['total_usage'] - \
-                   stats['precpu_stats']['cpu_usage']['total_usage']
-        system_delta = stats['cpu_stats']['system_cpu_usage'] - \
-                      stats['precpu_stats']['system_cpu_usage']
-        cpu_percent = 0.0
-        if system_delta > 0 and cpu_delta > 0:
-            cpu_percent = (cpu_delta / system_delta) * len(stats['cpu_stats']['cpu_usage'].get('percpu_usage', [1])) * 100.0
-        
-        # Calculate memory usage
-        mem_usage = stats['memory_stats'].get('usage', 0)
-        mem_limit = stats['memory_stats'].get('limit', 1)
-        mem_percent = (mem_usage / mem_limit) * 100.0 if mem_limit > 0 else 0
-        
-        # Network stats
-        rx_bytes = 0
-        tx_bytes = 0
-        if 'networks' in stats:
-            for interface, data in stats['networks'].items():
-                rx_bytes += data.get('rx_bytes', 0)
-                tx_bytes += data.get('tx_bytes', 0)
-        
-        result = {
-            'cpu_percent': round(cpu_percent, 2),
-            'mem_usage': mem_usage,
-            'mem_limit': mem_limit,
-            'mem_percent': round(mem_percent, 2),
-            'rx_bytes': rx_bytes,
-            'tx_bytes': tx_bytes
-        }
-        
-        return jsonify(success=True, stats=result)
-    except Exception as e:
-        return jsonify(success=False, error=str(e)), 400
-
 # Container Control Routes
 @app.route('/container/<container_id>/start', methods=['POST'])
+@login_required
+@roles_required('operator','admin')
 def start_container(container_id):
     try:
         container = docker_client.containers.get(container_id)
         container.start()
+        log = AuditLog(user_id=current_user.id, action='start', container_id=container_id)
+        db.session.add(log)
+        db.session.commit()
         return {'success': True, 'status': 'running'}
     except Exception as e:
         return {'success': False, 'error': str(e)}, 400
 
 @app.route('/container/<container_id>/stop', methods=['POST'])
+@login_required
+@roles_required('operator','admin')
 def stop_container(container_id):
     try:
         container = docker_client.containers.get(container_id)
         container.stop()
+        log = AuditLog(user_id=current_user.id, action='stop', container_id=container_id)
+        db.session.add(log)
+        db.session.commit()
         return {'success': True, 'status': 'stopped'}
     except Exception as e:
         return {'success': False, 'error': str(e)}, 400
 
 @app.route('/container/<container_id>/restart', methods=['POST'])
+@login_required
+@roles_required('operator','admin')
 def restart_container(container_id):
     try:
         container = docker_client.containers.get(container_id)
         container.restart()
+        log = AuditLog(user_id=current_user.id, action='restart', container_id=container_id)
+        db.session.add(log)
+        db.session.commit()
         return {'success': True, 'status': 'running'}
     except Exception as e:
         return {'success': False, 'error': str(e)}, 400
+
+# Authentication Routes
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    if current_user.is_authenticated:
+        return redirect(url_for('admin'))
+    if request.method == 'POST':
+        username = request.form.get('username')
+        password = request.form.get('password')
+        remember = request.form.get('remember') == 'on'
+        user = User.query.filter_by(username=username).first()
+        if user and user.password == password:
+            login_user(user, remember=remember)
+            next_page = request.args.get('next')
+            return redirect(next_page) if next_page else redirect(url_for('admin'))
+        flash('Login failed. Check username and password.', 'danger')
+    return render_template('login.html')
+
+@app.route('/logout')
+@login_required
+def logout():
+    logout_user()
+    return redirect(url_for('home'))
+
+@app.route('/create-user')
+def create_user():
+    # Check if the user already exists
+    if User.query.filter_by(username='user').first():
+        return jsonify(success=False, message="User already exists")
+    
+    # Create regular user with read-only permissions
+    regular_user = User(username='user', password='1234', role='read-only')
+    db.session.add(regular_user)
+    db.session.commit()
+    
+    return jsonify(success=True, message="Regular user created: username='user', password='1234', role='read-only'")
+
+with app.app_context():
+    db.create_all()
+    
+    # Create default users if no users exist
+    if not User.query.first():
+        # Admin user with full permissions
+        admin_user = User(username='admin', password='1234admin', role='admin')
+        db.session.add(admin_user)
+        
+        # Regular user with read-only permissions
+        regular_user = User(username='user', password='1234', role='read-only')
+        db.session.add(regular_user)
+        
+        db.session.commit()
+        print("Default users created:")
+        print("- Admin: username='admin', password='1234admin', role='admin'")
+        print("- User: username='user', password='1234', role='read-only'")
+        print("Role permissions:")
+        print("- admin: Full access to all features")
+        print("- operator: Can view everything and control containers")
+        print("- read-only: Can only view information, no control actions")
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=True)
