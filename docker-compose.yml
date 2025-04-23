@@ -12,3 +12,5 @@ services:
     environment:
       - FLASK_ENV=development
       - DOCKER_API_VERSION=1.41
+    env_file:
+      - .env
