@@ -1,6 +1,7 @@
 from flask import Flask, render_template, request, jsonify, redirect, url_for, flash
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager, UserMixin, login_user, logout_user, login_required, current_user
+from werkzeug.security import generate_password_hash, check_password_hash
 from functools import wraps
 from datetime import datetime
 import docker
@@ -277,7 +278,7 @@ def login():
         password = request.form.get('password')
         remember = request.form.get('remember') == 'on'
         user = User.query.filter_by(username=username).first()
-        if user and user.password == password:
+        if user and user.password and check_password_hash(user.password, password):
             login_user(user, remember=remember)
             next_page = request.args.get('next')
             return redirect(next_page) if next_page else redirect(url_for('admin'))
@@ -290,18 +291,7 @@ def logout():
     logout_user()
     return redirect(url_for('home'))
 
-@app.route('/create-user')
-def create_user():
-    # Check if the user already exists
-    if User.query.filter_by(username='user').first():
-        return jsonify(success=False, message="User already exists")
-    
-    # Create regular user with read-only permissions
-    regular_user = User(username='user', password='1234', role='read-only')
-    db.session.add(regular_user)
-    db.session.commit()
-    
-    return jsonify(success=True, message="Regular user created: username='user', password='1234', role='read-only'")
+# REMOVE UNSAFE USER CREATION ROUTE
 
 with app.app_context():
     db.create_all()
@@ -309,11 +299,11 @@ with app.app_context():
     # Create default users if no users exist
     if not User.query.first():
         # Admin user with full permissions
-        admin_user = User(username='admin', password='1234admin', role='admin')
+        admin_user = User(username='admin', password=generate_password_hash('1234admin'), role='admin')
         db.session.add(admin_user)
         
         # Regular user with read-only permissions
-        regular_user = User(username='user', password='1234', role='read-only')
+        regular_user = User(username='user', password=generate_password_hash('1234'), role='read-only')
         db.session.add(regular_user)
         
         db.session.commit()
