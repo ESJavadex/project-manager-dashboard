@@ -102,6 +102,56 @@ def container_logs(container_id):
     except Exception as e:
         return jsonify(success=False, error=str(e)), 400
 
+# Global Stats Route
+@app.route('/api/stats/global', methods=['GET'])
+def global_stats():
+    try:
+        # Get container stats
+        containers = docker_client.containers.list(all=True)
+        running_containers = [c for c in containers if c.status == 'running']
+        
+        # Get system stats
+        import psutil
+        
+        # CPU stats
+        cpu_percent = psutil.cpu_percent(interval=0.5)
+        
+        # Memory stats
+        memory = psutil.virtual_memory()
+        memory_used = memory.used
+        memory_total = memory.total
+        
+        # Disk stats
+        disk = psutil.disk_usage('/')
+        disk_used = disk.used
+        disk_total = disk.total
+        
+        # Network stats
+        net_io = psutil.net_io_counters()
+        network_rx = net_io.bytes_recv
+        network_tx = net_io.bytes_sent
+        
+        stats = {
+            'containers': {
+                'total': len(containers),
+                'running': len(running_containers),
+                'stopped': len(containers) - len(running_containers)
+            },
+            'system': {
+                'cpu_percent': cpu_percent,
+                'memory_used': memory_used,
+                'memory_total': memory_total,
+                'disk_used': disk_used,
+                'disk_total': disk_total,
+                'network_rx': network_rx,
+                'network_tx': network_tx
+            }
+        }
+        
+        return jsonify(success=True, stats=stats)
+    except Exception as e:
+        return jsonify(success=False, error=str(e)), 400
+
 # Container Stats Route
 @app.route('/container/<container_id>/stats', methods=['GET'])
 def container_stats(container_id):

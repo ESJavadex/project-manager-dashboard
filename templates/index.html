@@ -1,12 +1,85 @@
 {% extends "base.html" %}
 
 {% block content %}
-<div class="max-w-4xl mx-auto py-12">
-    <div class="text-center mb-12">
-        <h1 class="text-5xl font-bold text-blue-600 mb-4">Welcome to Pi Manager</h1>
-        <p class="text-xl text-gray-600">Your central dashboard for all Raspberry Pi projects</p>
+<div class="max-w-6xl mx-auto py-8">
+    <div class="text-center mb-8">
+        <h1 class="text-4xl md:text-5xl font-bold text-blue-600 mb-4">Project Manager Dashboard</h1>
+        <p class="text-xl text-gray-600">Your central hub for all Docker containers</p>
     </div>
 
+    <!-- System Stats Dashboard -->
+    <div class="bg-white p-6 rounded-lg shadow-lg mb-8">
+        <div class="flex justify-between items-center mb-4">
+            <h2 class="text-2xl font-semibold">System Overview</h2>
+            <button id="refresh-stats" class="text-blue-500 hover:text-blue-700">
+                <i class="fas fa-sync-alt"></i>
+            </button>
+        </div>
+        
+        <!-- Container Stats -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+            <div class="bg-blue-50 p-4 rounded-lg text-center">
+                <h3 class="text-lg font-medium mb-2">Total Containers</h3>
+                <p class="text-3xl font-bold text-blue-600" id="total-containers">-</p>
+            </div>
+            <div class="bg-green-50 p-4 rounded-lg text-center">
+                <h3 class="text-lg font-medium mb-2">Running</h3>
+                <p class="text-3xl font-bold text-green-600" id="running-containers">-</p>
+            </div>
+            <div class="bg-gray-50 p-4 rounded-lg text-center">
+                <h3 class="text-lg font-medium mb-2">Stopped</h3>
+                <p class="text-3xl font-bold text-gray-600" id="stopped-containers">-</p>
+            </div>
+        </div>
+        
+        <!-- Resource Usage -->
+        <div class="space-y-4">
+            <!-- CPU Usage -->
+            <div>
+                <div class="flex justify-between mb-1">
+                    <span class="font-medium">CPU Usage</span>
+                    <span id="cpu-usage">-%</span>
+                </div>
+                <div class="w-full bg-gray-200 rounded-full h-2.5">
+                    <div id="cpu-usage-bar" class="bg-blue-600 h-2.5 rounded-full" style="width: 0%"></div>
+                </div>
+            </div>
+            
+            <!-- Memory Usage -->
+            <div>
+                <div class="flex justify-between mb-1">
+                    <span class="font-medium">Memory Usage</span>
+                    <span><span id="memory-usage">-</span> / <span id="memory-total">-</span></span>
+                </div>
+                <div class="w-full bg-gray-200 rounded-full h-2.5">
+                    <div id="memory-usage-bar" class="bg-green-600 h-2.5 rounded-full" style="width: 0%"></div>
+                </div>
+            </div>
+            
+            <!-- Disk Usage -->
+            <div>
+                <div class="flex justify-between mb-1">
+                    <span class="font-medium">Disk Usage</span>
+                    <span><span id="disk-usage">-</span> / <span id="disk-total">-</span></span>
+                </div>
+                <div class="w-full bg-gray-200 rounded-full h-2.5">
+                    <div id="disk-usage-bar" class="bg-yellow-600 h-2.5 rounded-full" style="width: 0%"></div>
+                </div>
+            </div>
+            
+            <!-- Network Usage -->
+            <div class="flex justify-between">
+                <span class="font-medium">Network I/O</span>
+                <span>↓ <span id="network-rx">-</span> / ↑ <span id="network-tx">-</span></span>
+            </div>
+        </div>
+        
+        <div class="mt-4 text-right text-sm text-gray-500">
+            Last updated: <span id="last-updated">-</span>
+        </div>
+    </div>
+
+    <!-- Feature Cards -->
     <div class="grid md:grid-cols-3 gap-8">
         <div class="bg-white p-6 rounded-lg shadow-lg hover:shadow-xl transition">
             <div class="text-blue-500 text-4xl mb-4">
@@ -33,4 +106,6 @@
         </div>
     </div>
 </div>
+
+<script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
 {% endblock %}
