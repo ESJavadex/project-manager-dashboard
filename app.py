@@ -310,7 +310,31 @@ def logout():
     logout_user()
     return redirect(url_for('home'))
 
-# REMOVE UNSAFE USER CREATION ROUTE
+# Debug route for testing - REMOVE IN PRODUCTION
+@app.route('/debug-create-user')
+def debug_create_user():
+    # Create a test user with a fixed password
+    try:
+        # Check if user exists
+        test_user = User.query.filter_by(username='testadmin').first()
+        if test_user:
+            # Update password if user exists
+            test_user.password = generate_password_hash('test123')
+        else:
+            # Create new user if doesn't exist
+            test_user = User(username='testadmin', password=generate_password_hash('test123'), role='admin')
+            db.session.add(test_user)
+        
+        db.session.commit()
+        return jsonify({
+            'success': True, 
+            'message': 'Test user created successfully',
+            'username': 'testadmin',
+            'password': 'test123',
+            'role': 'admin'
+        })
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)})
 
 with app.app_context():
     db.create_all()
