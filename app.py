@@ -82,8 +82,65 @@ def container_info(container_id):
             'created': container.attrs['Created'],
             'ports': container.attrs['NetworkSettings']['Ports'],
             'labels': container.attrs['Config'].get('Labels', {}),
+            'env': container.attrs['Config'].get('Env', []),
+            'command': container.attrs['Config'].get('Cmd', []),
+            'volumes': container.attrs['HostConfig'].get('Binds', []),
+            'networks': list(container.attrs['NetworkSettings']['Networks'].keys()),
+            'restart_policy': container.attrs['HostConfig'].get('RestartPolicy', {}),
         }
         return jsonify(success=True, info=info)
+    except Exception as e:
+        return jsonify(success=False, error=str(e)), 400
+
+# Container Logs Route
+@app.route('/container/<container_id>/logs', methods=['GET'])
+def container_logs(container_id):
+    try:
+        container = docker_client.containers.get(container_id)
+        logs = container.logs(tail=100, timestamps=True).decode('utf-8')
+        return jsonify(success=True, logs=logs)
+    except Exception as e:
+        return jsonify(success=False, error=str(e)), 400
+
+# Container Stats Route
+@app.route('/container/<container_id>/stats', methods=['GET'])
+def container_stats(container_id):
+    try:
+        container = docker_client.containers.get(container_id)
+        stats = container.stats(stream=False)
+        
+        # Calculate CPU percentage
+        cpu_delta = stats['cpu_stats']['cpu_usage']['total_usage'] - \
+                   stats['precpu_stats']['cpu_usage']['total_usage']
+        system_delta = stats['cpu_stats']['system_cpu_usage'] - \
+                      stats['precpu_stats']['system_cpu_usage']
+        cpu_percent = 0.0
+        if system_delta > 0 and cpu_delta > 0:
+            cpu_percent = (cpu_delta / system_delta) * len(stats['cpu_stats']['cpu_usage'].get('percpu_usage', [1])) * 100.0
+        
+        # Calculate memory usage
+        mem_usage = stats['memory_stats'].get('usage', 0)
+        mem_limit = stats['memory_stats'].get('limit', 1)
+        mem_percent = (mem_usage / mem_limit) * 100.0 if mem_limit > 0 else 0
+        
+        # Network stats
+        rx_bytes = 0
+        tx_bytes = 0
+        if 'networks' in stats:
+            for interface, data in stats['networks'].items():
+                rx_bytes += data.get('rx_bytes', 0)
+                tx_bytes += data.get('tx_bytes', 0)
+        
+        result = {
+            'cpu_percent': round(cpu_percent, 2),
+            'mem_usage': mem_usage,
+            'mem_limit': mem_limit,
+            'mem_percent': round(mem_percent, 2),
+            'rx_bytes': rx_bytes,
+            'tx_bytes': tx_bytes
+        }
+        
+        return jsonify(success=True, stats=result)
     except Exception as e:
         return jsonify(success=False, error=str(e)), 400
 

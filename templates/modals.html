@@ -1,0 +1,104 @@
+<!-- Container Details Modal -->
+<div id="detailsModal" class="fixed inset-0 bg-gray-800 bg-opacity-75 flex items-center justify-center z-50 hidden">
+    <div class="bg-white rounded-lg shadow-xl w-11/12 md:w-3/4 lg:w-1/2 max-h-[90vh] flex flex-col">
+        <div class="p-4 border-b flex justify-between items-center">
+            <h3 class="text-xl font-semibold" id="detailsModalTitle">Container Details</h3>
+            <button class="text-gray-500 hover:text-gray-700 close-modal">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <div class="p-4 overflow-y-auto" id="detailsModalContent">
+            <div class="flex flex-col space-y-4">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div class="bg-gray-50 p-3 rounded">
+                        <h4 class="font-semibold mb-2">Basic Info</h4>
+                        <p><span class="font-medium">ID:</span> <span id="container-id"></span></p>
+                        <p><span class="font-medium">Name:</span> <span id="container-name"></span></p>
+                        <p><span class="font-medium">Status:</span> <span id="container-status"></span></p>
+                        <p><span class="font-medium">Image:</span> <span id="container-image"></span></p>
+                        <p><span class="font-medium">Created:</span> <span id="container-created"></span></p>
+                    </div>
+                    <div class="bg-gray-50 p-3 rounded">
+                        <h4 class="font-semibold mb-2">Resource Usage</h4>
+                        <div class="mb-2">
+                            <p class="mb-1">CPU: <span id="container-cpu" class="font-semibold"></span></p>
+                            <div class="w-full bg-gray-200 rounded-full h-2.5">
+                                <div id="cpu-bar" class="bg-blue-600 h-2.5 rounded-full" style="width: 0%"></div>
+                            </div>
+                        </div>
+                        <div>
+                            <p class="mb-1">Memory: <span id="container-memory" class="font-semibold"></span></p>
+                            <div class="w-full bg-gray-200 rounded-full h-2.5">
+                                <div id="memory-bar" class="bg-green-600 h-2.5 rounded-full" style="width: 0%"></div>
+                            </div>
+                        </div>
+                        <p class="mt-2"><span class="font-medium">Network:</span> <span id="container-network"></span></p>
+                    </div>
+                </div>
+                
+                <div class="bg-gray-50 p-3 rounded">
+                    <h4 class="font-semibold mb-2">Ports</h4>
+                    <div id="container-ports" class="grid grid-cols-1 md:grid-cols-2 gap-2"></div>
+                </div>
+                
+                <div class="bg-gray-50 p-3 rounded">
+                    <h4 class="font-semibold mb-2">Volumes</h4>
+                    <div id="container-volumes"></div>
+                </div>
+                
+                <div class="bg-gray-50 p-3 rounded">
+                    <h4 class="font-semibold mb-2">Environment Variables</h4>
+                    <div id="container-env" class="overflow-x-auto"></div>
+                </div>
+            </div>
+        </div>
+        <div class="p-4 border-t flex justify-end">
+            <button class="px-4 py-2 bg-gray-200 text-gray-800 rounded hover:bg-gray-300 close-modal">Close</button>
+        </div>
+    </div>
+</div>
+
+<!-- Container Logs Modal -->
+<div id="logsModal" class="fixed inset-0 bg-gray-800 bg-opacity-75 flex items-center justify-center z-50 hidden">
+    <div class="bg-white rounded-lg shadow-xl w-11/12 md:w-3/4 lg:w-2/3 max-h-[90vh] flex flex-col">
+        <div class="p-4 border-b flex justify-between items-center">
+            <h3 class="text-xl font-semibold" id="logsModalTitle">Container Logs</h3>
+            <div class="flex items-center space-x-2">
+                <button id="refreshLogs" class="text-blue-500 hover:text-blue-700">
+                    <i class="fas fa-sync-alt"></i>
+                </button>
+                <button class="text-gray-500 hover:text-gray-700 close-modal">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+        </div>
+        <div class="p-4 overflow-y-auto bg-gray-900 text-gray-200 font-mono text-sm h-96" id="logsModalContent">
+            <pre id="container-logs">Loading logs...</pre>
+        </div>
+        <div class="p-4 border-t flex justify-end">
+            <button class="px-4 py-2 bg-gray-200 text-gray-800 rounded hover:bg-gray-300 close-modal">Close</button>
+        </div>
+    </div>
+</div>
+
+<!-- Confirmation Modal -->
+<div id="confirmationModal" class="fixed inset-0 bg-gray-800 bg-opacity-75 flex items-center justify-center z-50 hidden">
+    <div class="bg-white rounded-lg shadow-xl w-11/12 md:w-96 max-h-[90vh] flex flex-col">
+        <div class="p-4 border-b flex justify-between items-center">
+            <h3 class="text-xl font-semibold" id="confirmationModalTitle">Confirm Action</h3>
+            <button class="text-gray-500 hover:text-gray-700 close-modal">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <div class="p-4" id="confirmationModalContent">
+            <p id="confirmationMessage">Are you sure you want to perform this action?</p>
+        </div>
+        <div class="p-4 border-t flex justify-end space-x-2">
+            <button class="px-4 py-2 bg-gray-200 text-gray-800 rounded hover:bg-gray-300 close-modal">Cancel</button>
+            <button id="confirmAction" class="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600">Confirm</button>
+        </div>
+    </div>
+</div>
+
+<!-- Toast Notifications -->
+<div id="toastContainer" class="fixed bottom-4 right-4 z-50 flex flex-col space-y-2"></div>
