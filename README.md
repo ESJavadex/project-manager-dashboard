@@ -74,6 +74,37 @@ Project Manager Dashboard is designed to be the single pane of glass for all you
 - **Session "Remember Me"**: Option to stay logged in securely.
 - **Database Not in Git**: The database file is excluded from version control for privacy.
 
+## ⚠️ SECURITY TODO LIST ⚠️
+
+> **IMPORTANT**: This application is currently designed for local network use only. The following security issues must be addressed before deploying to production or exposing to the internet.
+
+### Critical Issues
+
+1. **Debug Route Exposure**: `/debug-create-user` creates a user with hardcoded credentials - MUST BE REMOVED in production.
+2. **Default Credentials**: Default admin password is hardcoded if environment variable is not set.
+3. **No HTTPS**: All traffic, including passwords, is sent in plaintext.
+4. **No CSRF Protection**: Cross-Site Request Forgery protection is not implemented.
+5. **Debug Mode**: Flask is running in debug mode, which exposes sensitive information.
+
+### Important Improvements
+
+1. **Password Reset**: No mechanism to reset forgotten passwords.
+2. **Account Lockout**: Failed login attempts are limited but accounts are not locked.
+3. **Audit Trail**: Actions are logged but not displayed in the UI.
+4. **Session Timeout**: No automatic logout after inactivity.
+5. **Docker Socket Exposure**: Direct access to Docker socket is a security risk.
+6. **Environment Variable Handling**: Inconsistent handling of environment variables.
+
+### Future Enhancements
+
+1. **Two-Factor Authentication**: Add 2FA for admin accounts.
+2. **API Authentication**: Implement proper API tokens for programmatic access.
+3. **Content Security Policy**: Add CSP headers to prevent XSS attacks.
+4. **Security Headers**: Implement recommended security headers.
+5. **Regular Security Audits**: Establish a process for reviewing security.
+
+> **Note**: This application is currently suitable for home/lab use on trusted networks. Do not expose it to the internet without addressing these issues.
+
 
 ## Setup
 1. Clone this repository
