@@ -65,11 +65,30 @@ Project Manager Dashboard is designed to be the single pane of glass for all you
 - Modern web browser (Chrome, Firefox, Safari, Edge)
 - Node.js & npm (optional, for building frontend assets)
 
+## Security Features
+
+- **Admin Password via Environment Variable**: Set the initial admin password using the `ADMIN_PASSWORD` variable in your `.env` file. If not set, defaults to `1234admin`.
+- **Password Hashing**: All passwords are securely hashed using Werkzeug.
+- **Login Rate Limiting**: Only 5 login attempts are allowed per 10 minutes per IP address to prevent brute-force attacks.
+- **User Roles**: `admin` (full access), `operator` (manage containers), `read-only` (view only).
+- **Session "Remember Me"**: Option to stay logged in securely.
+- **Database Not in Git**: The database file is excluded from version control for privacy.
+
+
 ## Setup
 1. Clone this repository
 2. Run `pip install -r requirements.txt`
-3. Configure `.env` file
+3. Configure `.env` file (see below)
 4. Run `python app.py`
+
+### Example `.env` file
+```
+FLASK_SECRET_KEY=your-secret-key-here
+FLASK_DEBUG=True
+DOCKER_API_VERSION=1.41
+ADMIN_PASSWORD=your_admin_password_here
+```
+
 
 ## Docker Setup
 1. Build the image: `docker-compose build`
