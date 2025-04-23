@@ -269,19 +269,38 @@ def restart_container(container_id):
         return {'success': False, 'error': str(e)}, 400
 
 # Authentication Routes
+from flask import request, abort
+import time
+
+# Simple in-memory rate limit store
+login_attempts = {}
+LOGIN_ATTEMPT_LIMIT = 5
+LOGIN_ATTEMPT_WINDOW = 600  # 10 minutes in seconds
+
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if current_user.is_authenticated:
         return redirect(url_for('admin'))
+    client_ip = request.remote_addr
+    now = time.time()
+    # Clean up old attempts
+    attempts = login_attempts.get(client_ip, [])
+    attempts = [t for t in attempts if now - t < LOGIN_ATTEMPT_WINDOW]
+    if len(attempts) >= LOGIN_ATTEMPT_LIMIT:
+        flash('Too many login attempts. Please try again later.', 'danger')
+        return render_template('login.html')
     if request.method == 'POST':
         username = request.form.get('username')
         password = request.form.get('password')
         remember = request.form.get('remember') == 'on'
         user = User.query.filter_by(username=username).first()
         if user and user.password and check_password_hash(user.password, password):
+            login_attempts[client_ip] = []  # Reset on successful login
             login_user(user, remember=remember)
             next_page = request.args.get('next')
             return redirect(next_page) if next_page else redirect(url_for('admin'))
+        attempts.append(now)
+        login_attempts[client_ip] = attempts
         flash('Login failed. Check username and password.', 'danger')
     return render_template('login.html')
 
@@ -299,7 +318,8 @@ with app.app_context():
     # Create default users if no users exist
     if not User.query.first():
         # Admin user with full permissions
-        admin_user = User(username='admin', password=generate_password_hash('1234admin'), role='admin')
+        admin_pw = os.getenv('ADMIN_PASSWORD', '1234admin')
+        admin_user = User(username='admin', password=generate_password_hash(admin_pw), role='admin')
         db.session.add(admin_user)
         
         # Regular user with read-only permissions
@@ -308,7 +328,7 @@ with app.app_context():
         
         db.session.commit()
         print("Default users created:")
-        print("- Admin: username='admin', password='1234admin', role='admin'")
+        print(f"- Admin: username='admin', password='{admin_pw}', role='admin'")
         print("- User: username='user', password='1234', role='read-only'")
         print("Role permissions:")
         print("- admin: Full access to all features")
