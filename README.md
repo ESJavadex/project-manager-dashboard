@@ -14,12 +14,42 @@ A modern, beautiful dashboard to manage all your Dockerized projects from any co
 - Docker container control interface
 - Responsive design (works on mobile)
 - Works on any Linux, Mac, or Windows machine with Docker
+- Completely hardware-agnostic – works on any Linux, Mac, or Windows server.
 
 ## Technologies
 - Python Flask backend
 - Tailwind CSS for styling
 - Docker API integration
 - SQLite database (for user auth)
+
+## Why This Dashboard Is Awesome
+
+Project Manager Dashboard is designed to be the single pane of glass for all your Docker containers, wherever they run. With real-time monitoring, one-click controls, and seamless discovery of running services, you never need to switch contexts or memorize complex Docker commands.
+
+• **Instant Visibility**: Live CPU, memory, disk, and network usage keeps you informed about container and system health. No more guessing at logs or metrics – everything is displayed in easy-to-read charts and tables.
+
+• **Built-in Logs & Stats**: View the last 100 log lines directly in the UI, refresh on demand, or tail logs in real time. Detailed stats (CPU %, memory %, network I/O) update automatically to catch issues before they escalate.
+
+• **Safe & Fast Control**: Start, stop, or restart containers with a single click. Confirmation modals prevent accidental downtime, while toast notifications keep you informed of successes or errors.
+
+• **Extensible & Developer-Friendly**: Powered by Flask, Docker SDK, and psutil, you can customize or extend the backend API. Tailwind CSS ensures the frontend is clean, performant, and easy to theme.
+
+• **Cross-Platform & Mobile-Ready**: The responsive design adapts to any screen size, so you can manage containers from your desktop, tablet, or phone without losing functionality.
+
+## Requirements
+
+- Python 3.9 or higher
+- Docker Engine (19.03+)
+- Docker Compose (for local development)
+- Flask 2.3.2
+- Flask-SQLAlchemy 3.0.3
+- Flask-Login 0.6.2
+- Docker SDK for Python 6.1.3
+- python-dotenv 1.0.0
+- psutil 5.9.5
+- Tailwind CSS (included via static files or CDN)
+- Modern web browser (Chrome, Firefox, Safari, Edge)
+- Node.js & npm (optional, for building frontend assets)
 
 ## Setup
 1. Clone this repository
