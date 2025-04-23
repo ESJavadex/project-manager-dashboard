@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="max-w-6xl mx-auto py-8">
+    <h1 class="text-3xl font-bold text-blue-600 mb-8">Admin Dashboard</h1>
+    
+    <div class="bg-white rounded-lg shadow-lg p-6 mb-8">
+        <h2 class="text-xl font-semibold mb-4">Project Containers</h2>
+        
+        <div class="overflow-x-auto">
+            <table class="min-w-full bg-white">
+                <thead class="bg-gray-100">
+                    <tr>
+                        <th class="py-2 px-4 border-b">Name</th>
+                        <th class="py-2 px-4 border-b">Status</th>
+                        <th class="py-2 px-4 border-b">Image</th>
+                        <th class="py-2 px-4 border-b">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for container in containers %}
+                    <tr class="hover:bg-gray-50" data-container-id="{{ container.id }}">
+                        <td class="py-2 px-4 border-b">{{ container.name }}</td>
+                        <td class="py-2 px-4 border-b">
+                            <span class="px-2 py-1 rounded-full text-xs font-medium 
+                                {% if container.status == 'running' %}bg-green-100 text-green-800
+                                {% else %}bg-red-100 text-red-800{% endif %}">
+                                {{ container.status }}
+                            </span>
+                        </td>
+                        <td class="py-2 px-4 border-b">{{ container.image }}</td>
+                        <td class="py-2 px-4 border-b">
+                            <div class="flex space-x-2 container-actions">
+                                {% if container.status == 'running' %}
+                                <a href="#" class="text-red-500 hover:text-red-700">
+                                    <i class="fas fa-stop"></i>
+                                </a>
+                                {% else %}
+                                <a href="#" class="text-green-500 hover:text-green-700">
+                                    <i class="fas fa-play"></i>
+                                </a>
+                                {% endif %}
+                                <a href="#" class="text-blue-500 hover:text-blue-700">
+                                    <i class="fas fa-redo"></i>
+                                </a>
+                                <a href="#" class="text-gray-500 hover:text-gray-700">
+                                    <i class="fas fa-info-circle"></i>
+                                </a>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+<script src="{{ url_for('static', filename='js/container-control.js') }}"></script>
+{% endblock %}
