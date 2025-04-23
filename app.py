@@ -342,7 +342,13 @@ with app.app_context():
     # Create default users if no users exist
     if not User.query.first():
         # Admin user with full permissions
-        admin_pw = os.getenv('ADMIN_PASSWORD', '1234admin')
+        admin_pw = os.getenv('ADMIN_PASSWORD')
+        print(f"DEBUG: Admin password from env: '{admin_pw}'")
+        
+        # WARNING: Using default admin password. This is insecure and not recommended for production use.
+        if not admin_pw:
+            admin_pw = '1234admin'
+            print(f"DEBUG: Using default admin password: '{admin_pw}'")
         admin_user = User(username='admin', password=generate_password_hash(admin_pw), role='admin')
         db.session.add(admin_user)
         
