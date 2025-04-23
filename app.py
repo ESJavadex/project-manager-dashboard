@@ -43,12 +43,22 @@ def admin():
             image_name = container.attrs['Config']['Image']
         except (KeyError, TypeError):
             image_name = 'unknown'
-            
+
+        # Get the first mapped host port (if any)
+        ports = container.attrs['NetworkSettings']['Ports']
+        host_port = None
+        if ports:
+            for container_port, mappings in ports.items():
+                if mappings and isinstance(mappings, list):
+                    host_port = mappings[0].get('HostPort')
+                    break
+
         container_info.append({
             'id': container.id,
             'name': container.name,
             'status': container.status,
-            'image': image_name
+            'image': image_name,
+            'host_port': host_port
         })
     return render_template('admin.html', containers=container_info)
 
