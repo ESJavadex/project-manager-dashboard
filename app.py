@@ -336,6 +336,46 @@ def debug_create_user():
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)})
 
+# Debug route to reset login attempts - REMOVE IN PRODUCTION
+@app.route('/debug-reset-login-attempts')
+def debug_reset_login_attempts():
+    global login_attempts
+    login_attempts.clear()
+    return jsonify({
+        'success': True,
+        'message': 'All login attempts have been reset',
+        'cleared_ips': 'all'
+    })
+
+# Debug route to view login attempt status - REMOVE IN PRODUCTION  
+@app.route('/debug-login-status')
+def debug_login_status():
+    global login_attempts
+    now = time.time()
+    status = {}
+    
+    for ip, attempts in login_attempts.items():
+        # Clean up old attempts for display
+        recent_attempts = [t for t in attempts if now - t < LOGIN_ATTEMPT_WINDOW]
+        remaining_time = 0
+        if recent_attempts:
+            oldest_attempt = min(recent_attempts)
+            remaining_time = max(0, LOGIN_ATTEMPT_WINDOW - (now - oldest_attempt))
+        
+        status[ip] = {
+            'total_attempts': len(recent_attempts),
+            'max_attempts': LOGIN_ATTEMPT_LIMIT,
+            'blocked': len(recent_attempts) >= LOGIN_ATTEMPT_LIMIT,
+            'remaining_lockout_seconds': int(remaining_time) if len(recent_attempts) >= LOGIN_ATTEMPT_LIMIT else 0
+        }
+    
+    return jsonify({
+        'success': True,
+        'login_attempt_status': status,
+        'window_seconds': LOGIN_ATTEMPT_WINDOW,
+        'max_attempts': LOGIN_ATTEMPT_LIMIT
+    })
+
 with app.app_context():
     db.create_all()
     
