@@ -1,0 +1,36 @@
+version: '3.8'
+
+services:
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile.mac
+    ports:
+      - "5000:5000"
+    volumes:
+      - .:/app
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ./projects:/root/projects  # Mount projects directory
+    environment:
+      - FLASK_ENV=development
+      - FLASK_DEBUG=True
+      - DOCKER_API_VERSION=1.41
+      - RPI_AVAILABLE=false
+    env_file:
+      - .env
+    restart: unless-stopped
+    
+  # Optional: Add a database for more advanced features
+  # postgres:
+  #   image: postgres:13
+  #   environment:
+  #     POSTGRES_DB: projectmanager
+  #     POSTGRES_USER: admin
+  #     POSTGRES_PASSWORD: password
+  #   volumes:
+  #     - postgres_data:/var/lib/postgresql/data
+  #   ports:
+  #     - "5432:5432"
+
+# volumes:
+#   postgres_data:

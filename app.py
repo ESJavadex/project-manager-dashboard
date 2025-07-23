@@ -6,7 +6,24 @@ from functools import wraps
 from datetime import datetime
 import docker
 import os
+import subprocess
+import json
+import glob
 from dotenv import load_dotenv
+
+# Raspberry Pi specific imports (graceful fallback for non-Pi systems)
+RPI_AVAILABLE = os.getenv('RPI_AVAILABLE', 'true').lower() == 'true'
+
+if RPI_AVAILABLE:
+    try:
+        import RPi.GPIO as GPIO
+        from gpiozero import CPUTemperature, LED, Button, MCP3008
+        print("🍓 Raspberry Pi GPIO modules loaded successfully")
+    except ImportError:
+        RPI_AVAILABLE = False
+        print("⚠️  RPi.GPIO not available - falling back to mock mode")
+else:
+    print("🖥️  Running in Mac/Development mode - GPIO disabled")
 
 load_dotenv()
 
@@ -224,6 +241,361 @@ def global_stats():
         return jsonify(success=True, stats=stats)
     except Exception as e:
         return jsonify(success=False, error=str(e)), 400
+
+# Raspberry Pi Hardware Stats
+@app.route('/api/stats/rpi', methods=['GET'])
+@login_required
+def rpi_stats():
+    try:
+        stats = {}
+        
+        if RPI_AVAILABLE:
+            # CPU Temperature
+            cpu_temp = CPUTemperature()
+            stats['cpu_temperature'] = round(cpu_temp.temperature, 2)
+            
+            # GPU Temperature (if available)
+            try:
+                gpu_temp_result = subprocess.run(['vcgencmd', 'measure_temp'], 
+                                               capture_output=True, text=True, timeout=5)
+                if gpu_temp_result.returncode == 0:
+                    gpu_temp_str = gpu_temp_result.stdout.strip()
+                    gpu_temp = float(gpu_temp_str.split('=')[1].split("'")[0])
+                    stats['gpu_temperature'] = round(gpu_temp, 2)
+            except:
+                stats['gpu_temperature'] = None
+        else:
+            # Mock data for development
+            import random
+            stats['cpu_temperature'] = round(45 + random.random() * 15, 2)
+            stats['gpu_temperature'] = round(40 + random.random() * 10, 2)
+        
+        # CPU frequency and voltage
+        try:
+            # CPU frequency
+            freq_result = subprocess.run(['vcgencmd', 'measure_clock', 'arm'], 
+                                       capture_output=True, text=True, timeout=5)
+            if freq_result.returncode == 0:
+                freq_hz = int(freq_result.stdout.strip().split('=')[1])
+                stats['cpu_frequency_mhz'] = freq_hz // 1000000
+            
+            # Core voltage
+            volt_result = subprocess.run(['vcgencmd', 'measure_volts', 'core'], 
+                                       capture_output=True, text=True, timeout=5)
+            if volt_result.returncode == 0:
+                volt_str = volt_result.stdout.strip()
+                voltage = float(volt_str.split('=')[1].replace('V', ''))
+                stats['core_voltage'] = round(voltage, 2)
+        except:
+            stats['cpu_frequency_mhz'] = 1500  # Default Pi 4 frequency
+            stats['core_voltage'] = 1.2
+        
+        # Throttling status
+        try:
+            throttle_result = subprocess.run(['vcgencmd', 'get_throttled'], 
+                                           capture_output=True, text=True, timeout=5)
+            if throttle_result.returncode == 0:
+                throttle_hex = throttle_result.stdout.strip().split('=')[1]
+                throttle_int = int(throttle_hex, 16)
+                stats['throttling'] = {
+                    'under_voltage': bool(throttle_int & 0x1),
+                    'frequency_capped': bool(throttle_int & 0x2),
+                    'currently_throttled': bool(throttle_int & 0x4),
+                    'temperature_limit': bool(throttle_int & 0x8)
+                }
+        except:
+            stats['throttling'] = {
+                'under_voltage': False,
+                'frequency_capped': False,
+                'currently_throttled': False,
+                'temperature_limit': False
+            }
+        
+        return jsonify(success=True, stats=stats)
+    except Exception as e:
+        return jsonify(success=False, error=str(e)), 400
+
+# GPIO Control Routes
+@app.route('/api/gpio/status', methods=['GET'])
+@login_required
+@roles_required('read-only','operator','admin')
+def gpio_status():
+    try:
+        if not RPI_AVAILABLE:
+            return jsonify(success=False, error='GPIO not available on this system'), 400
+        
+        # Read common GPIO pins status
+        pins_status = {}
+        common_pins = [2, 3, 4, 17, 27, 22, 10, 9, 11, 5, 6, 13, 19, 26, 14, 15, 18, 23, 24, 25, 8, 7, 12, 16, 20, 21]
+        
+        GPIO.setmode(GPIO.BCM)
+        for pin in common_pins:
+            try:
+                GPIO.setup(pin, GPIO.IN, pull_up_down=GPIO.PUD_UP)
+                pins_status[pin] = {
+                    'value': GPIO.input(pin),
+                    'mode': 'input'
+                }
+            except:
+                pins_status[pin] = {'value': None, 'mode': 'unknown'}
+        
+        return jsonify(success=True, pins=pins_status)
+    except Exception as e:
+        return jsonify(success=False, error=str(e)), 400
+
+@app.route('/api/gpio/pin/<int:pin>/set', methods=['POST'])
+@login_required
+@roles_required('operator','admin')
+def gpio_set_pin(pin):
+    try:
+        if not RPI_AVAILABLE:
+            return jsonify(success=False, error='GPIO not available on this system'), 400
+        
+        data = request.get_json()
+        value = data.get('value', 0)
+        mode = data.get('mode', 'output')
+        
+        GPIO.setmode(GPIO.BCM)
+        
+        if mode == 'output':
+            GPIO.setup(pin, GPIO.OUT)
+            GPIO.output(pin, int(value))
+        elif mode == 'input':
+            pull = GPIO.PUD_UP if data.get('pull_up') else GPIO.PUD_DOWN
+            GPIO.setup(pin, GPIO.IN, pull_up_down=pull)
+        
+        return jsonify(success=True, pin=pin, value=value, mode=mode)
+    except Exception as e:
+        return jsonify(success=False, error=str(e)), 400
+
+# Project Management Routes
+@app.route('/api/projects', methods=['GET'])
+@login_required
+@roles_required('read-only','operator','admin')
+def list_projects():
+    try:
+        projects_dir = os.path.expanduser('~/projects')
+        if not os.path.exists(projects_dir):
+            os.makedirs(projects_dir)
+        
+        projects = []
+        for item in os.listdir(projects_dir):
+            project_path = os.path.join(projects_dir, item)
+            if os.path.isdir(project_path):
+                # Check if it's a git repository
+                is_git = os.path.exists(os.path.join(project_path, '.git'))
+                
+                project_info = {
+                    'name': item,
+                    'path': project_path,
+                    'is_git': is_git,
+                    'size': get_directory_size(project_path),
+                    'modified': os.path.getmtime(project_path)
+                }
+                
+                if is_git:
+                    try:
+                        import git
+                        repo = git.Repo(project_path)
+                        project_info['git_info'] = {
+                            'branch': repo.active_branch.name,
+                            'commit': repo.head.commit.hexsha[:8],
+                            'dirty': repo.is_dirty(),
+                            'remote': repo.remotes.origin.url if repo.remotes else None
+                        }
+                    except:
+                        project_info['git_info'] = {'error': 'Unable to read git info'}
+                
+                projects.append(project_info)
+        
+        return jsonify(success=True, projects=projects)
+    except Exception as e:
+        return jsonify(success=False, error=str(e)), 400
+
+@app.route('/api/projects/<project_name>/git/<action>', methods=['POST'])
+@login_required
+@roles_required('operator','admin')
+def git_action(project_name, action):
+    try:
+        import git
+        projects_dir = os.path.expanduser('~/projects')
+        project_path = os.path.join(projects_dir, project_name)
+        
+        if not os.path.exists(project_path) or not os.path.exists(os.path.join(project_path, '.git')):
+            return jsonify(success=False, error='Project not found or not a git repository'), 400
+        
+        repo = git.Repo(project_path)
+        result = {}
+        
+        if action == 'pull':
+            origin = repo.remotes.origin
+            pull_info = origin.pull()
+            result['message'] = f"Pulled {len(pull_info)} commits"
+        elif action == 'status':
+            result['status'] = {
+                'branch': repo.active_branch.name,
+                'commit': repo.head.commit.hexsha[:8],
+                'dirty': repo.is_dirty(),
+                'untracked': [item.a_path for item in repo.index.diff(None)],
+                'modified': [item.a_path for item in repo.index.diff(repo.head.commit)]
+            }
+        elif action == 'reset':
+            repo.git.reset('--hard', 'HEAD')
+            result['message'] = 'Repository reset to HEAD'
+        else:
+            return jsonify(success=False, error='Unknown git action'), 400
+        
+        return jsonify(success=True, result=result)
+    except Exception as e:
+        return jsonify(success=False, error=str(e)), 400
+
+# Network Monitoring Routes
+@app.route('/api/network/status', methods=['GET'])
+@login_required
+@roles_required('read-only','operator','admin')
+def network_status():
+    try:
+        import psutil
+        
+        # Get network interfaces
+        interfaces = {}
+        for interface, addrs in psutil.net_if_addrs().items():
+            if interface != 'lo':  # Skip loopback
+                interfaces[interface] = {
+                    'addresses': [addr.address for addr in addrs],
+                    'is_up': psutil.net_if_stats()[interface].isup
+                }
+        
+        # Get WiFi signal strength (if available)
+        wifi_signal = None
+        try:
+            iwconfig_result = subprocess.run(['iwconfig'], capture_output=True, text=True, timeout=5)
+            if iwconfig_result.returncode == 0:
+                output = iwconfig_result.stdout
+                for line in output.split('\n'):
+                    if 'Signal level' in line:
+                        signal_match = line.split('Signal level=')[1].split(' ')[0]
+                        wifi_signal = signal_match
+                        break
+        except:
+            pass
+        
+        # Get network statistics
+        net_stats = psutil.net_io_counters()
+        
+        result = {
+            'interfaces': interfaces,
+            'wifi_signal': wifi_signal,
+            'stats': {
+                'bytes_sent': net_stats.bytes_sent,
+                'bytes_recv': net_stats.bytes_recv,
+                'packets_sent': net_stats.packets_sent,
+                'packets_recv': net_stats.packets_recv
+            }
+        }
+        
+        return jsonify(success=True, network=result)
+    except Exception as e:
+        return jsonify(success=False, error=str(e)), 400
+
+@app.route('/api/network/scan', methods=['POST'])
+@login_required
+@roles_required('operator','admin')
+def network_scan():
+    try:
+        data = request.get_json()
+        target = data.get('target', '192.168.1.0/24')
+        
+        # Basic network scan using nmap if available
+        try:
+            nmap_result = subprocess.run(['nmap', '-sn', target], 
+                                       capture_output=True, text=True, timeout=30)
+            if nmap_result.returncode == 0:
+                hosts = []
+                for line in nmap_result.stdout.split('\n'):
+                    if 'Nmap scan report for' in line:
+                        host = line.split('for ')[1]
+                        hosts.append(host)
+                return jsonify(success=True, hosts=hosts)
+        except:
+            pass
+        
+        # Fallback: ping sweep
+        import ipaddress
+        network = ipaddress.IPv4Network(target, strict=False)
+        active_hosts = []
+        
+        for host in list(network.hosts())[:20]:  # Limit to first 20 hosts
+            try:
+                ping_result = subprocess.run(['ping', '-c', '1', '-W', '1', str(host)], 
+                                           capture_output=True, timeout=2)
+                if ping_result.returncode == 0:
+                    active_hosts.append(str(host))
+            except:
+                pass
+        
+        return jsonify(success=True, hosts=active_hosts)
+    except Exception as e:
+        return jsonify(success=False, error=str(e)), 400
+
+# System Services Management
+@app.route('/api/services', methods=['GET'])
+@login_required
+@roles_required('read-only','operator','admin')
+def list_services():
+    try:
+        # Get systemd services
+        services = []
+        systemctl_result = subprocess.run(['systemctl', 'list-units', '--type=service', '--no-pager'], 
+                                        capture_output=True, text=True, timeout=10)
+        
+        if systemctl_result.returncode == 0:
+            lines = systemctl_result.stdout.split('\n')[1:]  # Skip header
+            for line in lines:
+                if line.strip() and not line.startswith('●'):
+                    parts = line.split()
+                    if len(parts) >= 4:
+                        services.append({
+                            'name': parts[0],
+                            'load': parts[1],
+                            'active': parts[2],
+                            'sub': parts[3],
+                            'description': ' '.join(parts[4:]) if len(parts) > 4 else ''
+                        })
+        
+        return jsonify(success=True, services=services[:50])  # Limit to 50 services
+    except Exception as e:
+        return jsonify(success=False, error=str(e)), 400
+
+@app.route('/api/services/<service_name>/<action>', methods=['POST'])
+@login_required
+@roles_required('admin')
+def service_action(service_name, action):
+    try:
+        if action not in ['start', 'stop', 'restart', 'status']:
+            return jsonify(success=False, error='Invalid action'), 400
+        
+        result = subprocess.run(['sudo', 'systemctl', action, service_name], 
+                              capture_output=True, text=True, timeout=10)
+        
+        return jsonify(success=True, 
+                      output=result.stdout, 
+                      error=result.stderr,
+                      returncode=result.returncode)
+    except Exception as e:
+        return jsonify(success=False, error=str(e)), 400
+
+def get_directory_size(path):
+    total_size = 0
+    try:
+        for dirpath, dirnames, filenames in os.walk(path):
+            for filename in filenames:
+                filepath = os.path.join(dirpath, filename)
+                if os.path.exists(filepath):
+                    total_size += os.path.getsize(filepath)
+    except:
+        pass
+    return total_size
 
 # Container Control Routes
 @app.route('/container/<container_id>/start', methods=['POST'])

@@ -1,11 +1,37 @@
 {% extends "base.html" %}
 
 {% block content %}
-<div class="max-w-6xl mx-auto py-8">
-    <h1 class="text-3xl font-bold text-blue-600 mb-8">Admin Dashboard</h1>
+<div class="max-w-7xl mx-auto py-8">
+    <h1 class="text-3xl font-bold text-blue-600 mb-8">🍓 Raspberry Pi Control Panel</h1>
     
-    <div class="bg-white rounded-lg shadow-lg p-6 mb-8">
-        <h2 class="text-xl font-semibold mb-4">Project Containers</h2>
+    <!-- Navigation Tabs -->
+    <div class="border-b border-gray-200 mb-8">
+        <nav class="-mb-px flex space-x-8" id="tab-nav">
+            <button class="tab-btn active whitespace-nowrap py-2 px-1 border-b-2 border-blue-500 text-blue-600 font-medium text-sm" data-tab="containers">
+                <i class="fas fa-cube mr-2"></i>Containers
+            </button>
+            <button class="tab-btn whitespace-nowrap py-2 px-1 border-b-2 border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 font-medium text-sm" data-tab="system">
+                <i class="fas fa-microchip mr-2"></i>System Monitor
+            </button>
+            <button class="tab-btn whitespace-nowrap py-2 px-1 border-b-2 border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 font-medium text-sm" data-tab="gpio">
+                <i class="fas fa-plug mr-2"></i>GPIO Control
+            </button>
+            <button class="tab-btn whitespace-nowrap py-2 px-1 border-b-2 border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 font-medium text-sm" data-tab="projects">
+                <i class="fas fa-folder-open mr-2"></i>Projects
+            </button>
+            <button class="tab-btn whitespace-nowrap py-2 px-1 border-b-2 border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 font-medium text-sm" data-tab="network">
+                <i class="fas fa-network-wired mr-2"></i>Network
+            </button>
+            <button class="tab-btn whitespace-nowrap py-2 px-1 border-b-2 border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 font-medium text-sm" data-tab="services">
+                <i class="fas fa-cogs mr-2"></i>Services
+            </button>
+        </nav>
+    </div>
+
+    <!-- Containers Tab -->
+    <div id="containers-tab" class="tab-content">
+        <div class="bg-white rounded-lg shadow-lg p-6 mb-8">
+            <h2 class="text-xl font-semibold mb-4">Docker Containers</h2>
         
         <div class="overflow-x-auto w-full">
             <table class="min-w-full bg-white text-sm md:text-base">
@@ -81,10 +107,180 @@
                 </tbody>
             </table>
         </div>
+        </div>
+    </div>
+
+    <!-- System Monitor Tab -->
+    <div id="system-tab" class="tab-content hidden">
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+            <!-- System Stats Card -->
+            <div class="bg-white rounded-lg shadow-lg p-6">
+                <h3 class="text-lg font-semibold mb-4 flex items-center">
+                    <i class="fas fa-server mr-2 text-blue-500"></i>System Resources
+                </h3>
+                <div id="system-stats">
+                    <div class="space-y-3">
+                        <div class="flex justify-between">
+                            <span>CPU Usage:</span>
+                            <span id="cpu-usage" class="font-mono">--</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span>Memory:</span>
+                            <span id="memory-usage" class="font-mono">--</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span>Disk:</span>
+                            <span id="disk-usage" class="font-mono">--</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Pi Hardware Card -->
+            <div class="bg-white rounded-lg shadow-lg p-6">
+                <h3 class="text-lg font-semibold mb-4 flex items-center">
+                    <i class="fas fa-thermometer-half mr-2 text-red-500"></i>Pi Hardware
+                </h3>
+                <div id="rpi-stats">
+                    <div class="space-y-3">
+                        <div class="flex justify-between">
+                            <span>CPU Temp:</span>
+                            <span id="cpu-temp" class="font-mono">--</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span>GPU Temp:</span>
+                            <span id="gpu-temp" class="font-mono">--</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span>CPU Freq:</span>
+                            <span id="cpu-freq" class="font-mono">--</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span>Voltage:</span>
+                            <span id="core-voltage" class="font-mono">--</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Container Stats Card -->
+            <div class="bg-white rounded-lg shadow-lg p-6">
+                <h3 class="text-lg font-semibold mb-4 flex items-center">
+                    <i class="fas fa-cubes mr-2 text-green-500"></i>Container Status
+                </h3>
+                <div id="container-stats">
+                    <div class="space-y-3">
+                        <div class="flex justify-between">
+                            <span>Running:</span>
+                            <span id="running-containers" class="font-mono text-green-600">--</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span>Stopped:</span>
+                            <span id="stopped-containers" class="font-mono text-red-600">--</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span>Total:</span>
+                            <span id="total-containers" class="font-mono">--</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Throttling Warnings -->
+        <div id="throttling-warnings" class="hidden mb-6">
+            <div class="bg-yellow-50 border-l-4 border-yellow-400 p-4">
+                <div class="flex">
+                    <div class="flex-shrink-0">
+                        <i class="fas fa-exclamation-triangle text-yellow-400"></i>
+                    </div>
+                    <div class="ml-3">
+                        <p class="text-sm text-yellow-700">
+                            <strong>Warning:</strong> Your Raspberry Pi is experiencing throttling.
+                        </p>
+                        <ul id="throttling-list" class="mt-2 text-sm text-yellow-700 list-disc list-inside"></ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- GPIO Control Tab -->
+    <div id="gpio-tab" class="tab-content hidden">
+        <div class="bg-white rounded-lg shadow-lg p-6">
+            <h3 class="text-lg font-semibold mb-4 flex items-center">
+                <i class="fas fa-microchip mr-2 text-purple-500"></i>GPIO Pin Control
+            </h3>
+            <div id="gpio-pins" class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
+                <!-- GPIO pins will be populated by JavaScript -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Projects Tab -->
+    <div id="projects-tab" class="tab-content hidden">
+        <div class="bg-white rounded-lg shadow-lg p-6">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-lg font-semibold flex items-center">
+                    <i class="fas fa-code-branch mr-2 text-orange-500"></i>Project Management
+                </h3>
+                <button id="refresh-projects" class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded">
+                    <i class="fas fa-sync mr-2"></i>Refresh
+                </button>
+            </div>
+            <div id="projects-list">
+                <!-- Projects will be populated by JavaScript -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Network Tab -->
+    <div id="network-tab" class="tab-content hidden">
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div class="bg-white rounded-lg shadow-lg p-6">
+                <h3 class="text-lg font-semibold mb-4 flex items-center">
+                    <i class="fas fa-wifi mr-2 text-blue-500"></i>Network Status
+                </h3>
+                <div id="network-info">
+                    <!-- Network info will be populated by JavaScript -->
+                </div>
+            </div>
+            <div class="bg-white rounded-lg shadow-lg p-6">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-lg font-semibold flex items-center">
+                        <i class="fas fa-search mr-2 text-green-500"></i>Network Scanner
+                    </h3>
+                    <button id="scan-network" class="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded">
+                        <i class="fas fa-radar mr-2"></i>Scan
+                    </button>
+                </div>
+                <div id="network-scan-results">
+                    <!-- Scan results will be populated by JavaScript -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Services Tab -->
+    <div id="services-tab" class="tab-content hidden">
+        <div class="bg-white rounded-lg shadow-lg p-6">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-lg font-semibold flex items-center">
+                    <i class="fas fa-cog mr-2 text-gray-500"></i>System Services
+                </h3>
+                <button id="refresh-services" class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded">
+                    <i class="fas fa-sync mr-2"></i>Refresh
+                </button>
+            </div>
+            <div id="services-list">
+                <!-- Services will be populated by JavaScript -->
+            </div>
+        </div>
     </div>
 </div>
 
 {% include 'modals.html' %}
 
 <script src="{{ url_for('static', filename='js/container-control.js') }}"></script>
+<script src="{{ url_for('static', filename='js/rpi-dashboard.js') }}"></script>
 {% endblock %}

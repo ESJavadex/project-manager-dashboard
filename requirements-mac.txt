@@ -7,8 +7,4 @@ werkzeug
 
 gunicorn
 psutil
-RPi.GPIO
-gpiozero
-w1thermsensor
-speedtest-cli
 gitpython
